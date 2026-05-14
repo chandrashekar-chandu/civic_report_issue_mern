@@ -1,10 +1,19 @@
 const multer = require("multer");
 const path = require("path");
+const fs = require("fs");
 
-// Storage configuration
+// Absolute path to backend/uploads
+const uploadDir = path.join(__dirname, "..", "uploads");
+
+// Create uploads directory if it does not exist
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+// Configure storage
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, "uploads/");
+    cb(null, uploadDir);
   },
 
   filename: function (req, file, cb) {
@@ -18,17 +27,18 @@ const storage = multer.diskStorage({
   },
 });
 
-// File filter (only images)
+// Allow only image files
 const fileFilter = (req, file, cb) => {
-  const allowedTypes = /jpg|jpeg|png|gif|webp/;
+  const allowedTypes =
+    /jpeg|jpg|png|gif|webp/;
 
-  const isValid =
-    allowedTypes.test(
-      path.extname(file.originalname).toLowerCase()
-    ) &&
-    allowedTypes.test(file.mimetype);
+  const ext = allowedTypes.test(
+    path.extname(file.originalname).toLowerCase()
+  );
 
-  if (isValid) {
+  const mime = allowedTypes.test(file.mimetype);
+
+  if (ext && mime) {
     cb(null, true);
   } else {
     cb(new Error("Only image files are allowed"));
