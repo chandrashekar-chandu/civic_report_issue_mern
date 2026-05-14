@@ -431,7 +431,10 @@ module.exports = {
   getIssueById,
   updateIssue,
   updateIssueStatus,
-  assignIssueToDepartment,
+
+  // Export with the name expected by issueRoute.js
+  assignDepartment: assignIssueToDepartment,
+
   getIssuesByCategory,
   getIssuesByStatus,
   deleteIssue,
