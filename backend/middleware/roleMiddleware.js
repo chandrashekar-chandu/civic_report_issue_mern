@@ -1,27 +1,42 @@
-// middleware/roleMiddleware.js
-
-const jwt = require("jsonwebtoken");
-const User = require("../models/Usermodel");
+// backend/middleware/roleMiddleware.js
 
 const roleMiddleware = (...allowedRoles) => {
   return (req, res, next) => {
-    // authMiddleware must run before this middleware
-    if (!req.user) {
-      return res.status(401).json({
+    try {
+      // Ensure user exists
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: "User not authenticated",
+        });
+      }
+
+      // Get current user role
+      const userRole = req.user.role;
+
+      // Check if role is allowed
+      if (!allowedRoles.includes(userRole)) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "Forbidden. You do not have permission to access this resource.",
+        });
+      }
+
+      // Role is valid
+      next();
+    } catch (error) {
+      console.error(
+        "Role Middleware Error:",
+        error.message
+      );
+
+      return res.status(500).json({
         success: false,
-        message: "Unauthorized. User information not found.",
+        message:
+          "Server error while checking user role.",
       });
     }
-
-    // Check whether user's role is allowed
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({
-        success: false,
-        message: "Forbidden. You do not have permission to access this resource.",
-      });
-    }
-
-    next();
   };
 };
 
