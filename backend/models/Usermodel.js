@@ -6,8 +6,6 @@ const userSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
-      minlength: 2,
-      maxlength: 50,
     },
 
     email: {
@@ -21,20 +19,24 @@ const userSchema = new mongoose.Schema(
     password: {
       type: String,
       required: true,
-      minlength: 6,
+    },
+
+    phone: {
+      type: String,
+      required: true,
     },
 
     role: {
       type: String,
       enum: ["citizen", "department", "authority"],
       default: "citizen",
-      required: true,
     },
 
-    phone: {
-      type: String, // Better than Number for phone numbers
-      required: true,
-      trim: true,
+    // Link department users to a specific department
+    departmentId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Department",
+      default: null,
     },
 
     isVerified: {
@@ -43,10 +45,8 @@ const userSchema = new mongoose.Schema(
     },
   },
   {
-    timestamps: true, // Automatically adds createdAt and updatedAt
+    timestamps: true,
   }
 );
 
-const User = mongoose.model("User", userSchema);
-
-module.exports = User;
+module.exports = mongoose.model("User", userSchema);

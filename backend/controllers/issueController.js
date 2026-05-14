@@ -211,8 +211,8 @@ const updateIssueStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
-    const issue = await Issue.findById(req.params.id)
-      .populate("reportedBy", "name email");
+    // Find issue and populate assigned department
+    const issue = await Issue.findById(req.params.id);
 
     if (!issue) {
       return res.status(404).json({
@@ -221,28 +221,88 @@ const updateIssueStatus = async (req, res) => {
       });
     }
 
+    // Valid statuses
+    const validStatuses = [
+      "Pending",
+      "Assigned",
+      "In Progress",
+      "Resolved",
+      "Rejected",
+    ];
+
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status value",
+      });
+    }
+
+    // --------------------------------------------------
+    // Department-specific authorization
+    // --------------------------------------------------
+    // If logged-in user is a department user,
+    // they can update only issues assigned
+    // to their own department.
+    if (req.user.role === "department") {
+      if (
+        !req.user.departmentId ||
+        !issue.assignedDepartment
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "This issue is not assigned to your department.",
+        });
+      }
+
+      if (
+        issue.assignedDepartment.toString() !==
+        req.user.departmentId.toString()
+      ) {
+        return res.status(403).json({
+          success: false,
+          message:
+            "You can update only issues assigned to your department.",
+        });
+      }
+    }
+
+    // Update status
     issue.status = status;
+
+    // Save resolved timestamp
+    if (status === "Resolved") {
+      issue.resolvedAt = new Date();
+    }
+
     await issue.save();
 
-    await logActivity(
-      req.user._id,
-      `Updated issue status to ${status}`,
-      issue._id
-    );
+    // Create notification for issue creator
+    await Notification.create({
+      user: issue.createdBy,
+      title: "Issue Status Updated",
+      message: `Your issue "${issue.title}" status has been updated to "${status}".`,
+      type: "status_update",
+    });
 
-    if (issue.reportedBy) {
-      await createNotification({
-        body: {
-          recipientId: issue.reportedBy._id,
-          message: `Your issue "${issue.title}" status was updated to "${status}".`,
-          issueId: issue._id,
-        },
-      });
+    // Log activity (optional)
+    try {
+      await logActivity(
+        req.user._id,
+        "Updated issue status",
+        `Updated issue "${issue.title}" to "${status}"`
+      );
+    } catch (err) {
+      console.log(
+        "Log Activity Error:",
+        err.message
+      );
     }
 
     res.status(200).json({
       success: true,
-      message: "Issue status updated successfully",
+      message:
+        "Issue status updated successfully",
       issue,
     });
   } catch (error) {
@@ -250,9 +310,12 @@ const updateIssueStatus = async (req, res) => {
       "Update Issue Status Error:",
       error.message
     );
+
     res.status(500).json({
       success: false,
-      message: "Server Error",
+      message:
+        "Server error while updating issue status",
+      error: error.message,
     });
   }
 };
