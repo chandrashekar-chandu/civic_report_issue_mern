@@ -1,6 +1,3 @@
-// backend/routes/issueRoute.js
-// REPLACE YOUR ENTIRE FILE WITH THIS UPDATED VERSION
-
 const express = require("express");
 const router = express.Router();
 
@@ -8,87 +5,45 @@ const {
   createIssue,
   getAllIssues,
   getIssueById,
-  updateIssue,
-  deleteIssue,
-  getIssuesByCategory,
   updateIssueStatus,
-  getIssuesByStatus,
-  assignIssueToDepartment,
-  getMyIssues, // make sure this exists in issueController.js
+  assignDepartment,
+  getMyIssues,
 } = require("../controllers/issueController");
 
 const authMiddleware = require("../middleware/authMiddleware");
-const roleMiddleware = require("../middleware/roleMiddleware");
 const upload = require("../middleware/uploadMiddleware");
 
-// =========================================
-// CREATE ISSUE WITH IMAGE UPLOAD
-// Field name must be "image"
-// =========================================
+// Create Issue (Citizen)
 router.post(
   "/",
   authMiddleware,
-  roleMiddleware("citizen", "authority"),
   upload.single("image"),
   createIssue
 );
 
-// =========================================
-// GET CURRENT USER'S ISSUES
-// IMPORTANT: must come before "/:id"
-// =========================================
-router.get(
-  "/my",
-  authMiddleware,
-  roleMiddleware("citizen"),
-  getMyIssues
-);
-
-// =========================================
-// OTHER ROUTES
-// =========================================
+// Get all issues
 router.get("/", authMiddleware, getAllIssues);
 
-router.get(
-  "/category/:category",
-  authMiddleware,
-  getIssuesByCategory
-);
+// Get issues created by current user
+router.get("/my-issues", authMiddleware, getMyIssues);
 
-router.get(
-  "/status/:status",
-  authMiddleware,
-  getIssuesByStatus
-);
-
+// Get issue by ID
 router.get("/:id", authMiddleware, getIssueById);
 
-router.put(
-  "/:id",
-  authMiddleware,
-  roleMiddleware("citizen", "authority"),
-  updateIssue
-);
-
-router.put(
-  "/:id/status",
-  authMiddleware,
-  roleMiddleware("department", "authority"),
-  updateIssueStatus
-);
-
+// Assign department (Authority only)
 router.put(
   "/:id/assign",
   authMiddleware,
-  roleMiddleware("authority"),
-  assignIssueToDepartment
+  assignDepartment
 );
 
-router.delete(
-  "/:id",
+// Update issue status
+// NOTE: Only authentication is required here.
+// No roleMiddleware is used.
+router.put(
+  "/:id/status",
   authMiddleware,
-  roleMiddleware("authority"),
-  deleteIssue
+  updateIssueStatus
 );
 
 module.exports = router;
