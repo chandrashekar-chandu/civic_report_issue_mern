@@ -211,7 +211,6 @@ const updateIssueStatus = async (req, res) => {
   try {
     const { status } = req.body;
 
-    // Find issue and populate assigned department
     const issue = await Issue.findById(req.params.id);
 
     if (!issue) {
@@ -221,7 +220,6 @@ const updateIssueStatus = async (req, res) => {
       });
     }
 
-    // Valid statuses
     const validStatuses = [
       "Pending",
       "Assigned",
@@ -237,47 +235,19 @@ const updateIssueStatus = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------
-    // Department-specific authorization
-    // --------------------------------------------------
-    // If logged-in user is a department user,
-    // they can update only issues assigned
-    // to their own department.
-    if (req.user.role === "department") {
-      if (
-        !req.user.departmentId ||
-        !issue.assignedDepartment
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "This issue is not assigned to your department.",
-        });
-      }
+    // Allow any department or authority user
+    // Route-level middleware already enforces:
+    // roleMiddleware("department", "authority")
 
-      if (
-        issue.assignedDepartment.toString() !==
-        req.user.departmentId.toString()
-      ) {
-        return res.status(403).json({
-          success: false,
-          message:
-            "You can update only issues assigned to your department.",
-        });
-      }
-    }
-
-    // Update status
     issue.status = status;
 
-    // Save resolved timestamp
     if (status === "Resolved") {
       issue.resolvedAt = new Date();
     }
 
     await issue.save();
 
-    // Create notification for issue creator
+    // Notify the citizen who created the issue
     await Notification.create({
       user: issue.createdBy,
       title: "Issue Status Updated",
@@ -293,16 +263,12 @@ const updateIssueStatus = async (req, res) => {
         `Updated issue "${issue.title}" to "${status}"`
       );
     } catch (err) {
-      console.log(
-        "Log Activity Error:",
-        err.message
-      );
+      console.log("Log Activity Error:", err.message);
     }
 
     res.status(200).json({
       success: true,
-      message:
-        "Issue status updated successfully",
+      message: "Issue status updated successfully",
       issue,
     });
   } catch (error) {
@@ -313,8 +279,7 @@ const updateIssueStatus = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message:
-        "Server error while updating issue status",
+      message: "Server error while updating issue status",
       error: error.message,
     });
   }
