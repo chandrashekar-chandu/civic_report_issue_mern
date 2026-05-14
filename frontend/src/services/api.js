@@ -1,8 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL:
-    "https://civic-report-issue-mern.onrender.com/api",
+  baseURL: "https://civic-report-issue-mern.onrender.com/api",
 });
 
 api.interceptors.request.use((config) => {
