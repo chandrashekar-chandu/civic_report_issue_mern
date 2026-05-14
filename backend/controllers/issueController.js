@@ -235,10 +235,7 @@ const updateIssueStatus = async (req, res) => {
       });
     }
 
-    // Allow any department or authority user
-    // Route-level middleware already enforces:
-    // roleMiddleware("department", "authority")
-
+    // Update issue status
     issue.status = status;
 
     if (status === "Resolved") {
@@ -247,23 +244,36 @@ const updateIssueStatus = async (req, res) => {
 
     await issue.save();
 
-    // Notify the citizen who created the issue
-    await Notification.create({
-      user: issue.createdBy,
-      title: "Issue Status Updated",
-      message: `Your issue "${issue.title}" status has been updated to "${status}".`,
-      type: "status_update",
-    });
+    // Send notification to the citizen
+    if (issue.reportedBy) {
+      try {
+        await createNotification({
+          body: {
+            recipientId: issue.reportedBy,
+            message: `Your issue "${issue.title}" status has been updated to "${status}".`,
+            issueId: issue._id,
+          },
+        });
+      } catch (notificationError) {
+        console.log(
+          "Notification Error:",
+          notificationError.message
+        );
+      }
+    }
 
-    // Log activity (optional)
+    // Log activity
     try {
       await logActivity(
         req.user._id,
         "Updated issue status",
-        `Updated issue "${issue.title}" to "${status}"`
+        issue._id
       );
-    } catch (err) {
-      console.log("Log Activity Error:", err.message);
+    } catch (activityError) {
+      console.log(
+        "Activity Log Error:",
+        activityError.message
+      );
     }
 
     res.status(200).json({
@@ -279,8 +289,7 @@ const updateIssueStatus = async (req, res) => {
 
     res.status(500).json({
       success: false,
-      message: "Server error while updating issue status",
-      error: error.message,
+      message: error.message || "Server Error",
     });
   }
 };
