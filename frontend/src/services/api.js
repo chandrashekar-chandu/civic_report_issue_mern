@@ -5,7 +5,6 @@ const api = axios.create({
     "https://civic-report-issue-mern.onrender.com/api",
 });
 
-// Automatically attach JWT token to every request
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
 
