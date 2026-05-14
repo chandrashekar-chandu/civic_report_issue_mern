@@ -1,35 +1,38 @@
-// middleware/authMiddleware.js
-
 const jwt = require("jsonwebtoken");
 const User = require("../models/Usermodel");
 
 const authMiddleware = async (req, res, next) => {
   try {
-    let token;
+    let token = null;
 
-    // Check if Authorization header exists and starts with "Bearer "
-    const authHeader = req.headers.authorization;
-
-    if (authHeader && authHeader.startsWith("Bearer ")) {
-      // Extract token from "Bearer <token>"
-      token = authHeader.split(" ")[1];
+    // Read Authorization header
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer ")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
     }
 
-    // If token is missing
+    // No token provided
     if (!token) {
       return res.status(401).json({
         success: false,
-        message: "Access denied. No token provided.",
+        message: "Not authorized. No token provided.",
       });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Verify JWT
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET
+    );
 
-    // Fetch user and exclude password field
-    const user = await User.findById(decoded.id).select("-password");
+    // Fetch complete user document, including departmentId
+    const user = await User.findById(decoded.id)
+      .select("-password")
+      .populate("departmentId", "name");
 
-    // If user does not exist
+    // User not found
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -37,16 +40,19 @@ const authMiddleware = async (req, res, next) => {
       });
     }
 
-    // Attach user object to request
+    // Attach full user object to request
     req.user = user;
 
     next();
   } catch (error) {
-    console.error("Auth Middleware Error:", error.message);
+    console.error(
+      "Authentication Error:",
+      error.message
+    );
 
     return res.status(401).json({
       success: false,
-      message: "Invalid or expired token.",
+      message: "Not authorized. Invalid token.",
     });
   }
 };
