@@ -38,9 +38,10 @@ const UpdateIssueStatus = () => {
     }
   };
 
-  useEffect(() => {
-    fetchIssue();
-  }, [id]);
+ useEffect(() => {
+  fetchIssue();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [id]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

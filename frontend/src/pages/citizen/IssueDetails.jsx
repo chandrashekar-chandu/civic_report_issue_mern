@@ -39,8 +39,9 @@ const IssueDetails = () => {
   };
 
   useEffect(() => {
-    fetchIssueDetails();
-  }, [id]);
+  fetchIssueDetails();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [id]);
 
   // ==========================================
   // Add new comment
