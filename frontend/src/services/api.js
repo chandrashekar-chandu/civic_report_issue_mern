@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-baseURL: "https://civic-report-issue-mern-1.onrender.com",
+baseURL: "https://civic-report-issue-mern-1.onrender.com/api",
   timeout: 30000,
 });
 
