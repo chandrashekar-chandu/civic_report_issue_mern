@@ -1,7 +1,7 @@
 import axios from "axios";
 
 const api = axios.create({
-baseURL: "http://localhost:5002/api",
+baseURL: "https://civic-report-issue-mern-1.onrender.com",
   timeout: 30000,
 });
 
