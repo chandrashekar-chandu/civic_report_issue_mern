@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import api from "../../services/api";
 
@@ -10,20 +10,21 @@ const UpdateIssueStatus = () => {
   const [status, setStatus] = useState("Pending");
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    fetchIssue();
-  }, [id]);
-
-  const fetchIssue = async () => {
+  const fetchIssue = useCallback(async () => {
     try {
       const response = await api.get(`/issues/${id}`);
+
       setIssue(response.data.issue);
       setStatus(response.data.issue.status);
     } catch (error) {
       console.error("Fetch Issue Error:", error);
       alert("Failed to load issue.");
     }
-  };
+  }, [id]);
+
+  useEffect(() => {
+    fetchIssue();
+  }, [fetchIssue]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -31,7 +32,6 @@ const UpdateIssueStatus = () => {
     try {
       setLoading(true);
 
-      // IMPORTANT: Correct backend endpoint
       await api.put(`/issues/${id}/status`, {
         status,
       });
@@ -72,6 +72,7 @@ const UpdateIssueStatus = () => {
           <h2 className="text-xl font-semibold text-cyan-400">
             {issue.title}
           </h2>
+
           <p className="text-slate-300 mt-2">
             {issue.description}
           </p>
@@ -88,21 +89,11 @@ const UpdateIssueStatus = () => {
             }
             className="w-full px-4 py-3 rounded-xl bg-slate-700 text-white border border-slate-600"
           >
-            <option value="Pending">
-              Pending
-            </option>
-            <option value="Assigned">
-              Assigned
-            </option>
-            <option value="In Progress">
-              In Progress
-            </option>
-            <option value="Resolved">
-              Resolved
-            </option>
-            <option value="Rejected">
-              Rejected
-            </option>
+            <option value="Pending">Pending</option>
+            <option value="Assigned">Assigned</option>
+            <option value="In Progress">In Progress</option>
+            <option value="Resolved">Resolved</option>
+            <option value="Rejected">Rejected</option>
           </select>
 
           <button
