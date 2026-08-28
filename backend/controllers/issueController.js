@@ -1,5 +1,7 @@
 const Issue = require("../models/Issuemodel");
 const Department = require("../models/Departmentmodel");
+const User = require("../models/Usermodel");
+const Notification = require("../models/Notificationmodel");
 const { logActivity } = require("./activityController");
 const {
   createNotification,
@@ -247,18 +249,21 @@ const updateIssueStatus = async (req, res) => {
     // Send notification to the citizen
     if (issue.reportedBy) {
       try {
-        await createNotification({
-          body: {
-            recipientId: issue.reportedBy,
-            message: `Your issue "${issue.title}" status has been updated to "${status}".`,
-            issueId: issue._id,
-          },
+        const recipientId = issue.reportedBy._id || issue.reportedBy;
+        let notifType = "Status Updated";
+        if (status === "Resolved") notifType = "Issue Resolved";
+        if (status === "Rejected") notifType = "Issue Rejected";
+        if (status === "Assigned") notifType = "Issue Assigned";
+
+        await Notification.create({
+          userId: recipientId,
+          message: `Your reported issue "${issue.title}" status has been updated to "${status}".`,
+          issueId: issue._id,
+          type: notifType,
         });
+        console.log(`Notification sent to user ${recipientId} regarding status update to ${status}`);
       } catch (notificationError) {
-        console.log(
-          "Notification Error:",
-          notificationError.message
-        );
+        console.error("Notification Error:", notificationError.message);
       }
     }
 
@@ -323,6 +328,21 @@ const assignIssueToDepartment = async (req, res) => {
     issue.status = "Assigned";
 
     await issue.save();
+
+    // Send notification to the citizen
+    if (issue.reportedBy) {
+      try {
+        const recipientId = issue.reportedBy._id || issue.reportedBy;
+        await Notification.create({
+          userId: recipientId,
+          message: `Your reported issue "${issue.title}" has been assigned to department "${department.name}".`,
+          issueId: issue._id,
+          type: "Issue Assigned",
+        });
+      } catch (err) {
+        console.error("Notification Creation Error:", err.message);
+      }
+    }
 
     // Optional activity log
     try {
@@ -434,6 +454,95 @@ const deleteIssue = async (req, res) => {
     });
   }
 };
+const getAssignedIssues = async (req, res) => {
+  try {
+    console.log("ROLE:", req.user.role);
+    console.log("DEPARTMENT ID:", req.user.departmentId);
+
+    // Only department users can access this
+    if (req.user.role !== "department") {
+      return res.status(403).json({
+        success: false,
+        message: "Only department users can access assigned issues",
+      });
+    }
+
+    // Because departmentId is populated in authMiddleware,
+    // it may be an object containing _id
+    let departmentId =
+      req.query.departmentId ||
+      req.user.departmentId?._id ||
+      req.user.departmentId;
+
+    // Fallback 1: check if the user is listed in any Department's officerIds
+    if (!departmentId) {
+      const dept = await Department.findOne({ officerIds: req.user._id });
+      if (dept) {
+        departmentId = dept._id;
+        await User.findByIdAndUpdate(req.user._id, { departmentId: dept._id });
+      }
+    }
+
+    // Fallback 2: match department by user email or name
+    if (!departmentId) {
+      const userCleanName = (req.user.name || "").replace(/dept|department|officer|user/gi, "").trim();
+      const dept = await Department.findOne({
+        $or: [
+          { email: req.user.email },
+          ...(userCleanName.length > 2 ? [{ name: new RegExp(userCleanName, "i") }] : [])
+        ]
+      });
+      if (dept) {
+        departmentId = dept._id;
+        await User.findByIdAndUpdate(req.user._id, { departmentId: dept._id });
+        await Department.findByIdAndUpdate(dept._id, { $addToSet: { officerIds: req.user._id } });
+      }
+    }
+
+    // Fallback 3: If there is only 1 department in the system, default to that department
+    if (!departmentId) {
+      const depts = await Department.find();
+      if (depts.length === 1) {
+        departmentId = depts[0]._id;
+        await User.findByIdAndUpdate(req.user._id, { departmentId: depts[0]._id });
+        await Department.findByIdAndUpdate(depts[0]._id, { $addToSet: { officerIds: req.user._id } });
+      }
+    }
+
+    if (!departmentId) {
+      return res.status(200).json({
+        success: true,
+        unlinked: true,
+        count: 0,
+        issues: [],
+        message: "Your department account is not linked to a specific department yet. Please select your department.",
+      });
+    }
+
+    const issues = await Issue.find({
+      assignedDepartment: departmentId,
+    })
+      .populate("reportedBy", "name email")
+      .populate("assignedDepartment", "name")
+      .sort({ createdAt: -1 });
+
+    console.log("FOUND:", issues.length);
+
+    res.status(200).json({
+      success: true,
+      count: issues.length,
+      issues,
+    });
+
+  } catch (error) {
+    console.error("Get Assigned Issues Error:", error);
+
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+};
 
 module.exports = {
   createIssue,
@@ -442,9 +551,10 @@ module.exports = {
   getIssueById,
   updateIssue,
   updateIssueStatus,
-
+  
   // Export with the name expected by issueRoute.js
   assignDepartment: assignIssueToDepartment,
+  getAssignedIssues,
 
   getIssuesByCategory,
   getIssuesByStatus,

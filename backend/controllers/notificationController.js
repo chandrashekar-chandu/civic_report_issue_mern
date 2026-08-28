@@ -2,9 +2,10 @@ const Notification = require("../models/Notificationmodel");
 
 const createNotification = async (req, res) => {
   try {
-    const { userId, message, issueId, type } = req.body;
+    const targetUserId = req.body.userId || req.body.recipientId;
+    const { message, issueId, type } = req.body;
 
-    if (!userId || !message) {
+    if (!targetUserId || !message) {
       return res.status(400).json({
         success: false,
         message: "userId and message are required",
@@ -12,10 +13,10 @@ const createNotification = async (req, res) => {
     }
 
     const notification = await Notification.create({
-      userId,
+      userId: targetUserId,
       message,
       issueId,
-      type,
+      type: type || "Status Updated",
     });
 
     const populatedNotification = await Notification.findById(notification._id)

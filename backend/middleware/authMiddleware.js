@@ -30,7 +30,8 @@ const authMiddleware = async (req, res, next) => {
     // Fetch complete user document, including departmentId
     const user = await User.findById(decoded.id)
       .select("-password")
-      .populate("departmentId", "name");
+      .populate("departmentId");
+     
 
     // User not found
     if (!user) {

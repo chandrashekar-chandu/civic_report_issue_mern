@@ -112,6 +112,8 @@ function AppRoutes() {
         }
       />
 
+
+
       {/* =========================
           DEPARTMENT ROUTES
       ========================= */}
@@ -125,13 +127,13 @@ function AppRoutes() {
       />
 
       <Route
-        path="/department/issues"
-        element={
-          <ProtectedRoute allowedRoles={["department"]}>
-            <AssignedIssues />
-          </ProtectedRoute>
-        }
-      />
+  path="/department/issues"
+  element={
+    <ProtectedRoute allowedRoles={["department"]}>
+      <AssignedIssues />
+    </ProtectedRoute>
+  }
+/>
 
       <Route
         path="/department/issues/:id"

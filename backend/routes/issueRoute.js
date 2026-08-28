@@ -7,6 +7,7 @@ const {
   getIssueById,
   updateIssueStatus,
   assignDepartment,
+  getAssignedIssues,
   getMyIssues,
 } = require("../controllers/issueController");
 
@@ -20,7 +21,7 @@ router.post(
   upload.single("image"),
   createIssue
 );
-
+router.get("/assigned", authMiddleware, getAssignedIssues);
 // Get all issues
 router.get("/", authMiddleware, getAllIssues);
 
